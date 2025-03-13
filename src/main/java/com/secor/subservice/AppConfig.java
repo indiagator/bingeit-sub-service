@@ -1,4 +1,4 @@
-package com.secor.userservice;
+package com.secor.subservice;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,10 +12,20 @@ public class AppConfig {
     public WebClient webClientAuthService(WebClient.Builder webClientBuilder)
     {
         return webClientBuilder
-                .baseUrl("http://localhost:8082/api/v1/validate")
+                .baseUrl("http://localhost:8085/api/v1/validate")
                 .filter(new LoggingWebClientFilter())
                 .build();
     }
+
+    @Bean(name = "plain-old-web-client")
+    public WebClient webClientSubService(WebClient.Builder webClientBuilder)
+    {
+        return webClientBuilder
+                .baseUrl("http://localhost:8101/api/v1")
+                .filter(new LoggingWebClientFilter())
+                .build();
+    }
+
 
 
 }

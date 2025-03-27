@@ -2,6 +2,7 @@ package com.secor.subservice;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Date;
@@ -10,6 +11,7 @@ import java.util.Date;
 @Getter @Setter
 public class Subscription
 {
+    @Id
     private String subid;
     private MultiUserView users;
     private String planid;

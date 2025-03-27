@@ -31,12 +31,13 @@ public class SubService
     Producer producer;
 
         public String createSubscription(String planid, MultiUserView multiUserView, String token) throws JsonProcessingException {
+
             log.info("Creating subscription for plan: {}", planid);
             Subscription subscription = new Subscription();
             subscription.setPlanid(planid);
             subscription.setUsers(multiUserView);
             subscription.setSubid(String.valueOf(new Random().nextInt(1000)));
-            subscription.setStatus("unpaid");
+            subscription.setStatus("processing");
             subscription.setStartdate(new java.util.Date());
             subscriptionRepository.save(subscription);
             producer.publishSubDatum(subscription.getSubid(), "subscription created payment creation in progress", "CREATE", "PROCESSING");
@@ -60,6 +61,10 @@ public class SubService
                         log.info(response+" from the payment service");
                         // MENU CREATION LOGIC TO BE IMPLEMENTED HERE
                         // AND PUT THE RESPONSE IN REDIS
+                        log.info("updating subscription status for subscription  id: {}", subscription.getSubid());
+                        subscription.setStatus("unpaid");
+                        subscriptionRepository.save(subscription);
+                        log.info("Updating subscription: {}", subscription);
                         try {
                             producer.publishSubDatum(subscription.getSubid(), "subscription created payment created", "UPDATE", "UNPAID");
                         } catch (JsonProcessingException e) {
@@ -71,6 +76,16 @@ public class SubService
                     error ->
                     {
                         log.info("error processing the response "+error.getMessage());
+
+                        log.info("rolling back subscription status for subscription  id: {}", subscription.getSubid());
+                        subscription.setStatus("failed");
+                        subscriptionRepository.save(subscription);
+                        log.info("Updating subscription: {}", subscription);
+                        try {
+                            producer.publishSubDatum(subscription.getSubid(), "subscription rolled-back payment failed", "DELETE", "FAILED");
+                        } catch (JsonProcessingException e) {
+                            throw new RuntimeException(e);
+                        }
                         redisTemplate.opsForValue().set(responseKey,"error "+error.getMessage());
                     });
             /// END OF HANDLER

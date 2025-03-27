@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +25,10 @@ public class MainRestController {
 
     @Autowired
     SubService subService;
+    @Autowired
+    private SubscriptionRepository subscriptionRepository;
+    @Autowired
+    private Producer producer;
 
     @PostMapping("create/plan")
     public ResponseEntity<?> createPlan(@RequestBody Plan plan)
@@ -39,9 +44,10 @@ public class MainRestController {
                                        @RequestHeader("Authorization") String token,
                                        @RequestBody MultiUserView multiUserView,
                                        HttpServletRequest request,
-                                       HttpServletResponse response) throws JsonProcessingException {
+                                       HttpServletResponse response) throws JsonProcessingException, InterruptedException {
 
         log.info("Received request to create subscription: {}", multiUserView);
+       // Thread.sleep(5000);
 
         if(authService.validateToken(token))
         {
@@ -57,7 +63,8 @@ public class MainRestController {
 
             response.addCookie(cookieStage1);
 
-            return ResponseEntity.ok("subcomplete");
+            log.info("Cookie added to the responsebody as strings {} {}",cookieStage1.getName(),cookieStage1.getValue());
+            return ResponseEntity.ok("subresponse "+cookieStage1.getName()+" "+cookieStage1.getValue());
         }
         else
         {
@@ -66,6 +73,24 @@ public class MainRestController {
         }
 
     }
+
+    @GetMapping("/get/subs/active")
+    public ResponseEntity<?> getSubsActive()
+    {
+        return subscriptionRepository.findByStatusContainsIgnoreCase("active").size() > 0 ? ResponseEntity.ok(subscriptionRepository.findByStatusContainsIgnoreCase("active")) : ResponseEntity.ok("ZERO");
+    }
+
+    @PostMapping("/update/subs/{subid}")
+    public ResponseEntity<?> updateSub(@PathVariable("subid") String subid) throws JsonProcessingException {
+        log.info("Received request to update subscription: {}", subid);
+        Subscription subscription = subscriptionRepository.findById(subid).get();
+        subscription.setStatus("active");
+        subscriptionRepository.save(subscription);
+        producer.publishSubDatum(subid, "subscription status updated to active", "UPDATE", "ACTIVE");
+        log.info("Subscription updated: {}", subscription);
+        return ResponseEntity.ok("Subscription updated");
+    }
+
 
 
 }
